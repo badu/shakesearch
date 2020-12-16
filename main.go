@@ -9,17 +9,18 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 )
 
 func main() {
 	searcher := Searcher{}
-	err := searcher.Load("completeworks.txt")
-	if err != nil {
+
+	if err := searcher.Load("completeworks.txt"); err != nil {
 		log.Fatal(err)
 	}
 
-	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/", fs)
+	http.Handle("/", http.FileServer(http.Dir("./static")))
 
 	http.HandleFunc("/search", handleSearch(searcher))
 
@@ -29,54 +30,71 @@ func main() {
 	}
 
 	fmt.Printf("Listening on port %s...", port)
-	err = http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
-	if err != nil {
+
+	if err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil); err != nil {
 		log.Fatal(err)
 	}
 }
 
 type Searcher struct {
-	CompleteWorks string
-	SuffixArray   *suffixarray.Index
+	CompleteWorks    string
+	CompleteWorksLen int
+	SuffixArray      *suffixarray.Index
 }
 
 func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		query, ok := r.URL.Query()["q"]
-		if !ok || len(query[0]) < 1 {
+		if !ok || len(query) < 1 {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("missing search query in URL params"))
+			_, _ = w.Write([]byte("missing search query in URL params"))
 			return
 		}
-		results := searcher.Search(query[0])
-		buf := &bytes.Buffer{}
-		enc := json.NewEncoder(buf)
-		err := enc.Encode(results)
-		if err != nil {
+		results := searcher.Search(strings.ToLower(query[0]))
+		var buf bytes.Buffer
+		enc := json.NewEncoder(&buf)
+
+		if err := enc.Encode(results); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("encoding failure"))
+			_, _ = w.Write([]byte("encoding failure"))
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(buf.Bytes())
+		_, _ = w.Write(buf.Bytes())
 	}
 }
 
 func (s *Searcher) Load(filename string) error {
 	dat, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return fmt.Errorf("Load: %w", err)
+		return fmt.Errorf("error loading filename %q: %w", filename, err)
 	}
 	s.CompleteWorks = string(dat)
+	dat = bytes.ToLower(dat)
 	s.SuffixArray = suffixarray.New(dat)
+	s.CompleteWorksLen = len(dat)
 	return nil
 }
 
 func (s *Searcher) Search(query string) []string {
+	var results []string
+	now := time.Now()
 	idxs := s.SuffixArray.Lookup([]byte(query), -1)
-	results := []string{}
 	for _, idx := range idxs {
-		results = append(results, s.CompleteWorks[idx-250:idx+250])
+		fragment := ""
+		if idx < 250 {
+			fragment = strings.ReplaceAll(s.CompleteWorks[:idx+250], query, "<b>"+query+"</b>")
+
+		} else if idx+250 > len(s.CompleteWorks) {
+			fragment = strings.ReplaceAll(s.CompleteWorks[idx-250:], query, "<b>"+query+"</b>")
+		} else {
+			fragment = strings.ReplaceAll(s.CompleteWorks[idx-250:idx+250], query, "<b>"+query+"</b>")
+		}
+		results = append(results, fragment)
+	}
+	fmt.Printf("search took %d ns.\n", time.Now().Sub(now).Nanoseconds())
+	if len(results) == 0 {
+		fmt.Printf("no results found.\n")
 	}
 	return results
 }

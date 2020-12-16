@@ -9,19 +9,31 @@
 </head>
 
 <body>
-    <p>
-        <form id="form">
-            <label for="query">Query</label>
-            <input type="text" id="query" name="query">
-            <button type="submit">Search</button>
-        </form>
-    </p>
-    <p>
-        <table id="table">
-          <tbody id="table-body"></tbody>
-        </table>
-    </p>
-  <script src="app.js"></script>
+    <div class="main-div">
+
+        <!-- Left content -->
+        <div class="search-box">
+            <form id="form" class="centered-form">
+                <div style="border:1px solid rgba(0,0,0,.3);border-radius:2px;display:flex;flex-direction:row-reverse">
+                    <input id="query" name="query" type="text" placeholder="What art thee looking f'r" class="text-input">
+                    <div style="padding:8px">
+                        <button type="submit" class="looking-glass"></button>
+                    </div>
+                </div>
+                <div class="sign"></div>
+            </form>
+
+        </div>
+
+        <!-- Right content -->
+        <div class="search-result">
+            <table id="table">
+                <tbody id="table-body"></tbody>
+            </table>
+            <div id="shake" class="shake"></div>
+        </div>
+    </div>
+    <script src="app.js"></script>
 </body>
 
 </html>
