@@ -8,9 +8,12 @@ import (
 	"index/suffixarray"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
+	_ "pulley.com/shakesearch/internal/statik"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -64,15 +67,17 @@ type repositoryImpl struct {
 	completeWorksLen int
 	suffixArray      *suffixarray.Index
 	db               *sql.DB
+	statik           http.FileSystem
 }
 
-func NewRepository(fileName, sqlFileName string) (Repository, error) {
+func NewRepository(statik http.FileSystem, fileName, sqlFileName string) (Repository, error) {
 	var err error
-	result := &repositoryImpl{}
-	result.db, err = sql.Open("sqlite3", ":memory:")
-	if err != nil {
+	result := &repositoryImpl{statik: statik}
+
+	if result.db, err = sql.Open("sqlite3", ":memory:"); err != nil {
 		return nil, err
 	}
+
 	if err = result.load(fileName); err != nil {
 		return nil, err
 	}
@@ -83,12 +88,16 @@ func NewRepository(fileName, sqlFileName string) (Repository, error) {
 }
 
 func (r *repositoryImpl) loadSqlLite(fileName string) error {
-	file, err := ioutil.ReadFile(fileName)
+	file, err := r.statik.Open(fileName)
 	if err != nil {
 		return err
 	}
-
-	sqls := strings.Split(string(file), ";")
+	defer file.Close()
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		return err
+	}
+	sqls := strings.Split(string(content), ";")
 	for _, sql := range sqls {
 		sql = html.UnescapeString(sql)
 		sql = strings.ReplaceAll(sql, ";\n", ".\n")
@@ -102,14 +111,20 @@ func (r *repositoryImpl) loadSqlLite(fileName string) error {
 }
 
 func (r *repositoryImpl) load(fileName string) error {
-	dat, err := ioutil.ReadFile(fileName)
+	file, err := r.statik.Open(fileName)
 	if err != nil {
-		return fmt.Errorf("error loading filename %q: %w", fileName, err)
+		return err
 	}
-	r.completeWorks = string(dat)
-	dat = bytes.ToLower(dat)
-	r.suffixArray = suffixarray.New(dat)
-	r.completeWorksLen = len(dat)
+	defer file.Close()
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		return err
+	}
+
+	r.completeWorks = string(content)
+	content = bytes.ToLower(content)
+	r.suffixArray = suffixarray.New(content)
+	r.completeWorksLen = len(content)
 	return nil
 }
 

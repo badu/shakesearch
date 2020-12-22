@@ -7,5 +7,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.5
 	github.com/oklog/oklog v0.3.2
 	github.com/oklog/run v1.1.0 // indirect
+	github.com/rakyll/statik v0.1.7
 	github.com/sirupsen/logrus v1.7.0
 )

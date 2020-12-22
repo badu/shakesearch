@@ -12,9 +12,12 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/oklog/oklog/pkg/group"
+	"github.com/rakyll/statik/fs"
 	"github.com/sirupsen/logrus"
 
 	"pulley.com/shakesearch/internal/shaker"
+
+	_ "pulley.com/shakesearch/internal/statik"
 )
 
 func setupLogger(logLevel string) {
@@ -179,24 +182,31 @@ func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	logrus.SetOutput(os.Stdout)
 
-	dir, err := os.Getwd()
-	if err != nil {
-		logrus.WithFields(srvFields).Errorf("error getting current folder : %v", err)
-		os.Exit(1)
-	}
-	dataFileName := dir + "/data/completeworks.txt"
-	sqlFileName := dir + "/data/Shakespeare.sql"
-
-	logrus.WithFields(srvFields).Debugf("data file was found in %s", dataFileName)
-
 	// yeah, I know echo comes with a logger, but why not having two of them :)
 	setupLogger(logLevel)
+
+	statik, err := fs.New()
+	if err != nil {
+		logrus.WithFields(srvFields).Errorf("error statik web : %v", err)
+		os.Exit(1)
+	}
+	fs.Walk(statik, "/", func(path string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		logrus.Debugf("server file : %#v", path)
+		return nil
+	})
 
 	// I like this group, since two years ago
 	var g group.Group
 	// wiring things up : I like a cup of good composition in the morning
 	{
-		repository, err := shaker.NewRepository(dataFileName, sqlFileName)
+		repository, err := shaker.NewRepository(
+			statik,
+			"/data/completeworks.txt",
+			"/data/Shakespeare.sql",
+		)
 		if err != nil {
 			logrus.WithFields(srvFields).Errorf("error creating repository : %v", err)
 			os.Exit(1)
@@ -214,7 +224,10 @@ func main() {
 		router.Use(middleware.Recover())
 		router.Use(middleware.CORS())
 		router.Use(ServerHeader)
-		router.Use(middleware.Static(dir + "/web/dist"))
+
+		h := http.FileServer(statik)
+
+		router.GET("/*", echo.WrapHandler(http.StripPrefix("/", h)))
 
 		shaker.RegisterHTTP(router, service)
 
