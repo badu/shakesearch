@@ -171,7 +171,7 @@ func mountPProf(router *echo.Echo) {
 
 func main() {
 	flag.StringVar(&host, "host", "localhost", "the host on which this server runs (default : 'localhost')")
-	flag.IntVar(&port, "port", 8080, "the port to listen on for insecure connections, defaults to a 8080")
+	flag.IntVar(&port, "port", 80, "the port to listen on for insecure connections, defaults to a 80")
 	flag.StringVar(&logLevel, "loglevel", "DEBUG", "the log level for the logrus logger, defaults to ERR. Valid values are : 'EMERG','ALERT','CRIT','ERR','WARNING','NOTICE','INFO' and 'DEBUG'")
 
 	srvFields := logrus.Fields{"service": "shakespeare"}
