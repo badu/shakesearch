@@ -3,6 +3,7 @@ package shaker
 // need to mock ? implement this interface in unit tests
 type Service interface {
 	Search(query string) chan SearchResult
+	SearchDB(query, table string) chan SearchResult
 }
 
 type serviceImpl struct {
@@ -15,4 +16,8 @@ func NewService(repo Repository) Service {
 
 func (s serviceImpl) Search(query string) chan SearchResult {
 	return s.repository.Search(query)
+}
+
+func (s serviceImpl) SearchDB(query, table string) chan SearchResult {
+	return s.repository.SearchDB(query, table)
 }

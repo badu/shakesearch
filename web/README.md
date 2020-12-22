@@ -1,5 +1,7 @@
 # ShakeSearch VueJS Frontend
 
+A frontend built by a backend developer : abominable!
+
 ## Project setup
 ```
 npm install

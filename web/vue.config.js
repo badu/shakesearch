@@ -1,4 +1,5 @@
 module.exports = {
+    filenameHashing: false,
     chainWebpack: config => {
         config
             .plugin('html')

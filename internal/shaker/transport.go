@@ -59,8 +59,17 @@ func RegisterHTTP(e *echo.Echo, svc Service) {
 		if len(query) == 0 {
 			return echo.NewHTTPError(http.StatusBadRequest, "missing search query in URL params")
 		}
-
-		results := svc.Search(strings.ToLower(query))
+		var results chan SearchResult
+		// checking for "pipes"
+		if strings.Contains(query, "|") {
+			pipeAndQuery := strings.Split(query, "|")
+			if len(pipeAndQuery) != 2 {
+				return echo.NewHTTPError(http.StatusBadRequest, "pipes require exactly two parts")
+			}
+			results = svc.SearchDB(strings.ToLower(pipeAndQuery[0]), strings.ToLower(pipeAndQuery[1]))
+		} else {
+			results = svc.Search(strings.ToLower(query))
+		}
 		enc := json.NewEncoder(ctx.Response())
 
 		ctx.Response().WriteHeader(http.StatusOK)

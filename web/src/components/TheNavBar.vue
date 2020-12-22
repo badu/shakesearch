@@ -9,7 +9,9 @@
 </template>
 
 <script>
-export default {};
+export default {
+     props: ["lastError"],
+};
 </script>
 
 <style scoped>

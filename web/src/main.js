@@ -6,14 +6,17 @@ import { createStore } from 'vuex';
 const store = createStore({
     state() {
         return {
-            start: true,
-            searchTerm: 'ham',
+            searchTerm: '',
             loading: false,
-            results: [{ f: "test", p: 1 }, { f: "test2", p: 2 }],
+            results: null,
             lastError: null
         };
     },
     actions: {
+        clearResults({ state }) {
+            state.searchTerm = '';
+            state.results = null;
+        },
         async fetchResults({ state }, newSearchTerm) {
             state.searchTerm = newSearchTerm;
             state.loading = true;
@@ -31,7 +34,7 @@ const store = createStore({
             const parentState = state;
             reader.read().then(
                 ({ value: bytes, done }) => {
-                    if (state.start) { state.start = false }
+                    state.loading = false;
                     if (done) {
                         console.log(`stream closed. no results!`);
                         return
